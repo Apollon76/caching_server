@@ -5,6 +5,7 @@ from urllib.parse import urlparse, ParseResult, urljoin
 import requests
 from bs4 import BeautifulSoup
 from redis import Redis
+from requests import HTTPError
 
 from src import utils
 
@@ -14,7 +15,7 @@ class LoadingError(Exception):
 
 
 class PageLoader:
-    URL_PREFIX = 'http://localhost?'
+    URL_PREFIX = 'http://localhost:8080/?url='
 
     def __init__(self,
                  database: Redis,
@@ -49,7 +50,8 @@ class PageLoader:
         if path is not None:
             return path.decode()
 
-        filename = utils.gen_filename()
+        _, extension = os.path.splitext(url)
+        filename = utils.gen_filename() + extension
         path = os.path.join(self.__storage_path, filename)
 
         resp = requests.get(url, stream=True)
@@ -73,7 +75,10 @@ class PageLoader:
             url = img['src']
             url = utils.normalize_link(url, base)
             print(url)
-            path = self.load_file(url)
+            try:
+                path = self.load_file(url)
+            except HTTPError:
+                continue
             img['src'] = path
 
     def __replace_links(self, page: BeautifulSoup, base: ParseResult):
@@ -91,7 +96,10 @@ class PageLoader:
                 continue
             url = utils.normalize_link(url, base)
             print(url)
-            path = self.load_file(url)
+            try:
+                path = self.load_file(url)
+            except HTTPError:
+                continue
             tag['href'] = path
 
     def __replace_js(self, page: BeautifulSoup, base: ParseResult):
@@ -101,5 +109,8 @@ class PageLoader:
                 continue
             url = utils.normalize_link(url, base)
             print(url)
-            path = self.load_file(url)
+            try:
+                path = self.load_file(url)
+            except HTTPError:
+                continue
             tag['src'] = path

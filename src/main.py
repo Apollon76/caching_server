@@ -1,13 +1,7 @@
-from bottle import run, route
 from redis import Redis
 
 from src.page_loader import PageLoader
 from src.server import App
-
-
-@route('/hello')
-def hello():
-    return 'asdf'
 
 
 def main():

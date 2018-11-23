@@ -1,6 +1,4 @@
-import os
-
-from bottle import Bottle, route, static_file
+from bottle import Bottle, static_file, request
 
 from src.page_loader import PageLoader
 
@@ -14,11 +12,11 @@ class App(Bottle):
         self.__loader = loader
         self.__storage_path = storage_path
 
-        self.route('/hello', callback=self.hello)
+        self.route('/', callback=self.index)
         self.route('/static/<filename:path>', callback=self.server_static)
 
-    def hello(self) -> str:
-        return self.__loader.load('https://docs.python.org/3/')
+    def index(self) -> str:
+        return self.__loader.load(request.query.url)
 
     def server_static(self, filename: str) -> str:
         print(filename)
