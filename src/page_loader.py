@@ -1,11 +1,11 @@
+import asyncio
 import os
-import shutil
 from urllib.parse import urlparse, ParseResult, urljoin
 
+import aiohttp as aiohttp
 import requests
 from bs4 import BeautifulSoup
 from redis import Redis
-from requests import HTTPError
 
 from src import utils
 
@@ -41,13 +41,14 @@ class PageLoader:
         self.__replace_links(page, base)
 
         for tag, attr in self.REPLACING_TAGS:
-            self.__replace_files(page, base, tag, attr)
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.__replace_files(loop, page, base, tag, attr))
 
         self.__database.set(url, page.prettify())
 
         return page.prettify()
 
-    def load_file(self, url: str) -> str:
+    async def load_file(self, session: aiohttp.ClientSession, url: str) -> str:
         filename = self.__database.get(url)
         if filename is not None:
             return urljoin('http://localhost:8080/static/', filename.decode())
@@ -56,12 +57,13 @@ class PageLoader:
         filename = utils.gen_filename() + extension
         path = os.path.join(self.__storage_path, filename)
 
-        resp = requests.get(url, stream=True)
-        resp.raise_for_status()
-
-        with open(path, 'wb') as f:
-            resp.raw.decode_content = True
-            shutil.copyfileobj(resp.raw, f)
+        async with session.get(url) as response:
+            with open(path, 'wb') as f_handle:
+                while True:
+                    chunk = await response.content.read(1024)
+                    if not chunk:
+                        break
+                    f_handle.write(chunk)
 
         self.__database.set(url, filename)
 
@@ -72,20 +74,33 @@ class PageLoader:
         resp.raise_for_status()
         return resp.content
 
-    def __replace_files(self,
-                        page: BeautifulSoup,
-                        base: ParseResult,
-                        tag_type: str,
-                        attr: str):
+    async def __replace_files(self,
+                              loop,
+                              page: BeautifulSoup,
+                              base: ParseResult,
+                              tag_type: str,
+                              attr: str):
+        urls = []
         for tag in page.find_all(tag_type):
             url = tag.get(attr)
             if not url:
                 continue
             url = utils.normalize_link(url, base)
-            try:
-                path = self.load_file(url)
-            except HTTPError:
+            urls.append(url)
+
+        async with aiohttp.ClientSession(loop=loop) as session:
+            tasks = [self.load_file(session, url) for url in urls]
+            paths = await asyncio.gather(*tasks)
+
+        pointer = 0
+        for tag in page.find_all(tag_type):
+            url = tag.get(attr)
+            if not url:
                 continue
+
+            path = paths[pointer]
+            pointer += 1
+
             tag[attr] = path
 
     def __replace_links(self, page: BeautifulSoup, base: ParseResult):
