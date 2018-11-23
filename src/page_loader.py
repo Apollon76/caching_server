@@ -15,6 +15,12 @@ class LoadingError(Exception):
 
 
 class PageLoader:
+    REPLACING_TAGS = [
+        ('img', 'src'),
+        ('script', 'src'),
+        ('link', 'href'),
+    ]
+
     def __init__(self,
                  database: Redis,
                  storage_path: str,
@@ -32,14 +38,10 @@ class PageLoader:
         content = self.__get_content(url)
         page = BeautifulSoup(content, 'html.parser')
 
-        handlers = [
-            self.__replace_images,
-            self.__replace_links,
-            self.__replace_css,
-            self.__replace_js,
-        ]
-        for handler in handlers:
-            handler(page, base)
+        self.__replace_links(page, base)
+
+        for tag, attr in self.REPLACING_TAGS:
+            self.__replace_files(page, base, tag, attr)
 
         self.__database.set(url, page.prettify())
 
@@ -70,15 +72,21 @@ class PageLoader:
         resp.raise_for_status()
         return resp.content
 
-    def __replace_images(self, page: BeautifulSoup, base: ParseResult):
-        for img in page.find_all('img'):
-            url = img['src']
+    def __replace_files(self,
+                        page: BeautifulSoup,
+                        base: ParseResult,
+                        tag_type: str,
+                        attr: str):
+        for tag in page.find_all(tag_type):
+            url = tag.get(attr)
+            if not url:
+                continue
             url = utils.normalize_link(url, base)
             try:
                 path = self.load_file(url)
             except HTTPError:
                 continue
-            img['src'] = path
+            tag[attr] = path
 
     def __replace_links(self, page: BeautifulSoup, base: ParseResult):
         for link in page.find_all('a'):
@@ -87,27 +95,3 @@ class PageLoader:
                 continue
             url = utils.normalize_link(url, base)
             link['href'] = self.__url_prefix + url
-
-    def __replace_css(self, page: BeautifulSoup, base: ParseResult):
-        for tag in page.find_all('link'):
-            url = tag.get('href')
-            if not url:
-                continue
-            url = utils.normalize_link(url, base)
-            try:
-                path = self.load_file(url)
-            except HTTPError:
-                continue
-            tag['href'] = path
-
-    def __replace_js(self, page: BeautifulSoup, base: ParseResult):
-        for tag in page.find_all('script'):
-            url = tag.get('src')
-            if not url:
-                continue
-            url = utils.normalize_link(url, base)
-            try:
-                path = self.load_file(url)
-            except HTTPError:
-                continue
-            tag['src'] = path
