@@ -46,9 +46,9 @@ class PageLoader:
         return page.prettify()
 
     def load_file(self, url: str) -> str:
-        path = self.__database.get(url)
-        if path is not None:
-            return path.decode()
+        filename = self.__database.get(url)
+        if filename is not None:
+            return urljoin('http://localhost:8080/static/', filename.decode())
 
         _, extension = os.path.splitext(url)
         filename = utils.gen_filename() + extension
@@ -74,7 +74,6 @@ class PageLoader:
         for img in page.find_all('img'):
             url = img['src']
             url = utils.normalize_link(url, base)
-            print(url)
             try:
                 path = self.load_file(url)
             except HTTPError:
@@ -95,7 +94,6 @@ class PageLoader:
             if not url:
                 continue
             url = utils.normalize_link(url, base)
-            print(url)
             try:
                 path = self.load_file(url)
             except HTTPError:
@@ -108,7 +106,6 @@ class PageLoader:
             if not url:
                 continue
             url = utils.normalize_link(url, base)
-            print(url)
             try:
                 path = self.load_file(url)
             except HTTPError:

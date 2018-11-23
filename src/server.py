@@ -1,3 +1,5 @@
+from urllib.parse import urlparse, urlunsplit, ParseResult
+
 from bottle import Bottle, static_file, request
 
 from src.page_loader import PageLoader
@@ -16,8 +18,14 @@ class App(Bottle):
         self.route('/static/<filename:path>', callback=self.server_static)
 
     def index(self) -> str:
-        return self.__loader.load(request.query.url)
+        try:
+            url = request.query.url
+            if not url.startswith('http') and not url.startswith('https'):
+                url = 'http://' + url
+            return self.__loader.load(url)
+        except Exception as e:
+            print(e)
+            return 'Something went wrong'
 
     def server_static(self, filename: str) -> str:
-        print(filename)
         return static_file(filename, root=self.__storage_path)
