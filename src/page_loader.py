@@ -24,10 +24,12 @@ class PageLoader:
     def __init__(self,
                  database: Redis,
                  storage_path: str,
-                 url_prefix: str):
+                 url_prefix: str,
+                 url_file_prefix: str):
         self.__database = database
         self.__storage_path = storage_path
         self.__url_prefix = url_prefix
+        self.__url_file_prefix = url_file_prefix
 
     def load(self, url: str) -> str:
         result = self.__database.get(url)
@@ -51,7 +53,7 @@ class PageLoader:
     async def load_file(self, session: aiohttp.ClientSession, url: str) -> str:
         filename = self.__database.get(url)
         if filename is not None:
-            return urljoin('http://localhost:8080/static/', filename.decode())
+            return urljoin(self.__url_file_prefix, filename.decode())
 
         _, extension = os.path.splitext(url)
         filename = utils.gen_filename() + extension
@@ -67,7 +69,7 @@ class PageLoader:
 
         self.__database.set(url, filename)
 
-        return urljoin('http://localhost:8080/static/', filename)
+        return urljoin(self.__url_file_prefix, filename)
 
     def __get_content(self, url: str) -> bytes:
         resp = requests.get(url)

@@ -27,7 +27,8 @@ def main():
     loader = PageLoader(
         database=client,
         storage_path=storage_path,
-        url_prefix=urljoin(f'http://{host}:{port}', '/?url=')
+        url_prefix=urljoin(f'http://{host}:{port}', '/?url='),
+        url_file_prefix=f'http://{host}:{port}/static/'
     )
 
     app = App(loader, storage_path)
