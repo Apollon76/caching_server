@@ -20,7 +20,7 @@ class App(Bottle):
     def index(self) -> str:
         try:
             url = request.query.url
-            if not url.startswith('http') and not url.startswith('https'):
+            if not url.startswith('http://') and not url.startswith('https://'):
                 url = 'http://' + url
             return self.__loader.load(url)
         except Exception as e:
