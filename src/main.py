@@ -11,7 +11,8 @@ def main():
 
     loader = PageLoader(
         database=client,
-        storage_path=storage_path
+        storage_path=storage_path,
+        url_prefix='http://localhost:8080/?url='
     )
 
     app = App(loader, storage_path)

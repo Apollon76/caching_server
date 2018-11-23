@@ -15,13 +15,13 @@ class LoadingError(Exception):
 
 
 class PageLoader:
-    URL_PREFIX = 'http://localhost:8080/?url='
-
     def __init__(self,
                  database: Redis,
-                 storage_path: str):
+                 storage_path: str,
+                 url_prefix: str):
         self.__database = database
         self.__storage_path = storage_path
+        self.__url_prefix = url_prefix
 
     def load(self, url: str) -> str:
         result = self.__database.get(url)
@@ -86,7 +86,7 @@ class PageLoader:
             if not url:
                 continue
             url = utils.normalize_link(url, base)
-            link['href'] = self.URL_PREFIX + url
+            link['href'] = self.__url_prefix + url
 
     def __replace_css(self, page: BeautifulSoup, base: ParseResult):
         for tag in page.find_all('link'):
