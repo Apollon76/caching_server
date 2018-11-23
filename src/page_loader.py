@@ -22,7 +22,11 @@ class PageLoader:
         self.__database = database
         self.__storage_path = storage_path
 
-    def load(self, url: str):
+    def load(self, url: str) -> str:
+        result = self.__database.get(url)
+        if result:
+            return result.decode()
+
         base = urlparse(url)
         content = self.__get_content(url)
         page = BeautifulSoup(content, 'html.parser')
@@ -69,12 +73,8 @@ class PageLoader:
             url = img['src']
             url = utils.normalize_link(url, base)
             print(url)
-            try:
-                path = self.load_file(url)
-                img['src'] = path
-            except Exception as e:
-                print(e)
-                pass
+            path = self.load_file(url)
+            img['src'] = path
 
     def __replace_links(self, page: BeautifulSoup, base: ParseResult):
         for link in page.find_all('a'):
@@ -85,7 +85,21 @@ class PageLoader:
             link['href'] = self.URL_PREFIX + url
 
     def __replace_css(self, page: BeautifulSoup, base: ParseResult):
-        ...
+        for tag in page.find_all('link'):
+            url = tag.get('href')
+            if not url:
+                continue
+            url = utils.normalize_link(url, base)
+            print(url)
+            path = self.load_file(url)
+            tag['href'] = path
 
     def __replace_js(self, page: BeautifulSoup, base: ParseResult):
-        ...
+        for tag in page.find_all('script'):
+            url = tag.get('src')
+            if not url:
+                continue
+            url = utils.normalize_link(url, base)
+            print(url)
+            path = self.load_file(url)
+            tag['src'] = path

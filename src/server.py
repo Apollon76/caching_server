@@ -18,7 +18,7 @@ class App(Bottle):
         self.route('/static/<filename:path>', callback=self.server_static)
 
     def hello(self) -> str:
-        return self.__loader.load('http://e1.ru')
+        return self.__loader.load('https://docs.python.org/3/')
 
     def server_static(self, filename: str) -> str:
         print(filename)
